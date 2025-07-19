@@ -205,3 +205,13 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# wandb
+wandb/
+
+# unsloth cache
+unsloth_compiled_cache/
+
+# train output
+output/
+grpo_trainer_lora_model
