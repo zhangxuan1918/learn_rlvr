@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def get_train_config():
+def get_train_config(report_to: str = "none", output_dir: str = "output"):
     return GRPOConfig(
         use_vllm=True,
         learning_rate=5e-6,
@@ -34,8 +34,8 @@ def get_train_config():
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
-        report_to="wandb",
-        output_dir="output",
+        report_to=report_to,
+        output_dir=output_dir,
     )
 
 
@@ -62,6 +62,8 @@ def train(
     fast_inference: bool,
     lora_rank: int,
     gpu_memory_utilization: float,
+    report_to: str,
+    output_dir: str,
 ):
     model, tokenizer = get_model(
         model_name=model_name,
@@ -71,7 +73,7 @@ def train(
         lora_rank=lora_rank,
         gpu_memory_utilization=gpu_memory_utilization,
     )
-    training_config = get_train_config()
+    training_config = get_train_config(report_to=report_to, output_dir=output_dir)
     dataset = get_gsm8k_questions()
     trainer = get_trainer(training_config, model, tokenizer, dataset)
     trainer.train()
@@ -79,14 +81,23 @@ def train(
 
 
 if __name__ == "__main__":
-    wandb.login(key=os.environ["WANDB_API_KEY"])
-    wandb.init(project="learn-rlvr", config=get_train_config().to_dict())
+    if os.environ.get("WANDB_API_KEY", None):
+        wandb.login(key=os.environ["WANDB_API_KEY"])
+        wandb.init(project="learn-rlvr", config=get_train_config().to_dict())
+        report_to = "wandb"
+    else:
+        report_to = "none"
+    
+    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    output_dir = f"output/grpo/{model_name}/"
     train(
-        model_name="Qwen/Qwen2.5-3B-Instruct",
+        model_name=model_name,
         max_seq_length=2048,
         load_in_4bit=True,
         fast_inference=True,
         lora_rank=64,
         gpu_memory_utilization=0.5,
+        report_to=report_to,
+        output_dir=output_dir,
     )
 
