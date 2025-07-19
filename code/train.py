@@ -1,3 +1,4 @@
+import os
 from model import get_model
 from data import (
     get_gsm8k_questions,
@@ -8,6 +9,10 @@ from data import (
     soft_format_reward_func,
 )
 from trl import GRPOConfig, GRPOTrainer
+import wandb
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def get_train_config():
@@ -19,17 +24,17 @@ def get_train_config():
         weight_decay=0.1,
         warmup_ratio=0.1,
         lr_scheduler_type="cosine",
-        optim="adam_8bit",
+        optim="adamw_8bit",
         logging_steps=1,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         num_generations=8,
         max_prompt_length=1024,
-        max_completion_length=256,
+        max_completion_length=1024,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
-        report_to="none",
+        report_to="wandb",
         output_dir="output",
     )
 
@@ -37,25 +42,51 @@ def get_train_config():
 def get_trainer(training_config, model, tokenizer, dataset):
     return GRPOTrainer(
         model=model,
-        preprocessing_class=tokenizer,
+        processing_class=tokenizer,
         reward_funcs=[
             xmlcount_reward_func,
             soft_format_reward_func,
             strict_format_reward_func,
             int_reward_func,
             correctness_reward_func,
-        ],
+        ],  # type: ignore
         args=training_config,
         train_dataset=dataset,
     )
 
-def train():
-    model, tokenizer = get_model()
+
+def train(
+    model_name: str,
+    max_seq_length: int,
+    load_in_4bit: bool,
+    fast_inference: bool,
+    lora_rank: int,
+    gpu_memory_utilization: float,
+):
+    model, tokenizer = get_model(
+        model_name=model_name,
+        max_seq_length=max_seq_length,
+        load_in_4bit=load_in_4bit,
+        fast_inference=fast_inference,
+        lora_rank=lora_rank,
+        gpu_memory_utilization=gpu_memory_utilization,
+    )
     training_config = get_train_config()
     dataset = get_gsm8k_questions()
     trainer = get_trainer(training_config, model, tokenizer, dataset)
     trainer.train()
     model.save_lora("grpo_saved_lora")
 
+
 if __name__ == "__main__":
-    train()
+    wandb.login(key=os.environ["WANDB_API_KEY"])
+    wandb.init(project="learn-rlvr", config=get_train_config().to_dict())
+    train(
+        model_name="Qwen/Qwen2.5-3B-Instruct",
+        max_seq_length=2048,
+        load_in_4bit=True,
+        fast_inference=True,
+        lora_rank=64,
+        gpu_memory_utilization=0.5,
+    )
+

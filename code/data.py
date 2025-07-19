@@ -1,5 +1,5 @@
 import re
-from datasets import load_dataset, Dataset
+from datasets import load_dataset
 
 SYSTEM_PROMPT = """
 Respond in the following format:
@@ -21,16 +21,20 @@ XML_COT_FORMAT = """\
 """
 
 def extract_xml_answer(text: str) -> str:
-    answer = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL).group(1)
-    return answer.strip()
+    match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
+
+    if match:
+        return match.group(1).strip()
+    else:
+        return ""
 
 def extract_hash_answer(text: str) -> str | None:
     if "####" not in text:
         return None
     return text.split("####")[1].strip()
 
-def get_gsm8k_questions(split = "train") -> Dataset:
-    data = load_dataset("openai/gsm8k", "main")[split]
+def get_gsm8k_questions(split = "train"):
+    data = load_dataset("openai/gsm8k", "main", split=split)
     data = data.map(lambda x: {
         "prompt": [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -45,7 +49,7 @@ def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[floa
     responses = [completion[0]["content"] for completion in completions]
     question = prompts[0][-1]["content"]
     extracted_responses = [extract_xml_answer(response) for response in responses]
-    print("-" * 20, f"Question:\n{question}", f"\nAnswer:\n{answer[0]}", f"\nResponses:\n{extracted_responses[0]}", f"\nExtracted:\n{extracted_responses[0]}")
+    print("-" * 20, f"Question:\n{question}", f"\nAnswer:\n{answer[0]}", f"\nResponses:\n{responses[0]}", f"\nExtracted:\n{extracted_responses[0]}")
     return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
 
 def int_reward_func(completions, **kwargs) -> list[float]:

@@ -23,7 +23,7 @@ def get_model(model_name: str, max_seq_length: int, load_in_4bit: bool, fast_inf
             "down_proj",
         ],
         lora_alpha=lora_rank,
-        use_gradient_checkpointing="unsloth",
+        use_gradient_checkpointing=True,
         random_state=42,
     )
     return model, tokenizer
