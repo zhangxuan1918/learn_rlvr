@@ -100,4 +100,6 @@ if __name__ == "__main__":
         report_to=report_to,
         output_dir=output_dir,
     )
+    wandb.finish()
+
 
