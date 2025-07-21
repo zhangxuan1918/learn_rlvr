@@ -20,9 +20,9 @@ if __name__ == "__main__":
     base_response = generate(
         model=model_base, 
         tokenizer=tokenizer, 
-        question=question,
+        questions=[question],
         system_prompt=SYSTEM_PROMPT_DETAILED
-    )
+    )[0]
     print(f"base_response: {base_response}")
 
     # With lora adapter
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     grpo_response = generate(
         model=model_peft, 
         tokenizer=tokenizer, 
-        question=question,
+        questions=[question],
         system_prompt=SYSTEM_PROMPT
-    )
+    )[0]
     print(f"grpo_response: {grpo_response}")
