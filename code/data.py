@@ -58,7 +58,7 @@ def int_reward_func(completions, **kwargs) -> list[float]:
     return [0.5 if r.isdigit() else 0.0 for r in extracted_responses]
 
 def strict_format_reward_func(completions, **kwargs) -> list[float]:
-    pattern = r"<reasoning>\n.*?\n</reasoning>\n<answer>\n.*?\n</answer>\n"
+    pattern = r"^<reasoning>\n.*?\n</reasoning>\n<answer>\n.*?\n</answer>\n$"
     responses = [completion[0]["content"] for completion in completions]
     matches = [re.match(pattern, r) for r in responses]
     return [0.5 if m else 0.0 for m in matches]
