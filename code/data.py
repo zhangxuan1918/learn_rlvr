@@ -11,6 +11,16 @@ Respond in the following format:
 </answer>
 """
 
+SYSTEM_PROMPT_DETAILED = """
+Respond in the following format:
+<reasoning>
+Put your reasoning here.
+</reasoning>
+<answer>
+Put your answer here. The answer should be an integer.
+</answer>
+"""
+
 XML_COT_FORMAT = """\
 <reasoning>
 {reasoning}
