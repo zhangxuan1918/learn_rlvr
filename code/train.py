@@ -77,7 +77,7 @@ def train(
     dataset = get_gsm8k_questions()
     trainer = get_trainer(training_config, model, tokenizer, dataset)
     trainer.train()
-    model.save_lora("grpo_saved_lora")
+    model.save_lora(os.path.join(output_dir, "grpo_saved_lora"))
 
 
 if __name__ == "__main__":
