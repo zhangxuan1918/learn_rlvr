@@ -83,7 +83,7 @@ def train(
 if __name__ == "__main__":
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
-        wandb.init(project="learn-rlvr", config=get_train_config().to_dict())
+        wandb.init(project="learn-rlvr", config=get_train_config().to_dict(), name="grpo_qwen2.5-3b-instruct")
         report_to = "wandb"
     else:
         report_to = "none"
