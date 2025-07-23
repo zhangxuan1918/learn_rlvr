@@ -71,3 +71,5 @@ The reported GSM8K metric for Qwen 2.5 3B Instruct model is 86.7. The performanc
 2. when evaluating GSM8K for base model and GRPOed model, we notice the response in the second batch looks strange: wrong format, repeated tokens etc
    * solution: add ```python tokenizer.padding_side="left"``` for each batch
    * for unknown reason, padding_side is reset to "right" after the first batch inference. [link](https://github.com/unslothai/unsloth/issues/267)
+
+## Qwen/Qwen2.5-0.5B-Instruct

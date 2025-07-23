@@ -14,6 +14,7 @@ def generate(
     max_new_tokens: int = 512,
     do_sample: bool = True,
     system_prompt: str = SYSTEM_PROMPT,
+    return_prompt: bool = False
 ) -> list[str]:
     prompts = [
         tokenizer.apply_chat_template(
@@ -41,7 +42,10 @@ def generate(
             use_cache=True,
             do_sample=do_sample,  # Greedy decode if do_sample=False
         )
-    generated_tokens = outputs[:, inputs["input_ids"].shape[1] :]
+    if not return_prompt:
+        generated_tokens = outputs[:, inputs["input_ids"].shape[1] :]
+    else:
+        generated_tokens = outputs
     generated_texts = tokenizer.batch_decode(
         generated_tokens, 
         skip_special_tokens=True,

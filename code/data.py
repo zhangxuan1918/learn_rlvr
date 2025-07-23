@@ -1,25 +1,21 @@
 import re
 from datasets import load_dataset
 
-SYSTEM_PROMPT = """
-Respond in the following format:
+SYSTEM_PROMPT = """Respond in the following format:
 <reasoning>
 ...
 </reasoning>
 <answer>
 ...
-</answer>
-"""
+</answer>"""
 
-SYSTEM_PROMPT_DETAILED = """
-Respond in the following format:
+SYSTEM_PROMPT_DETAILED = """Respond in the following format:
 <reasoning>
 Put your reasoning here.
 </reasoning>
 <answer>
 Put your answer here. The answer should be an integer.
-</answer>
-"""
+</answer>"""
 
 XML_COT_FORMAT = """\
 <reasoning>
@@ -27,8 +23,7 @@ XML_COT_FORMAT = """\
 </reasoning>
 <answer>
 {answer}
-</answer>
-"""
+</answer>"""
 
 def extract_xml_answer(text: str) -> str:
     match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
@@ -68,27 +63,27 @@ def int_reward_func(completions, **kwargs) -> list[float]:
     return [0.5 if r.isdigit() else 0.0 for r in extracted_responses]
 
 def strict_format_reward_func(completions, **kwargs) -> list[float]:
-    pattern = r"^<reasoning>\n.*?\n</reasoning>\n<answer>\n.*?\n</answer>\n$"
+    pattern = r"^<reasoning>\n.*?\n</reasoning>\n<answer>\n.*?\n</answer>$"
     responses = [completion[0]["content"] for completion in completions]
     matches = [re.match(pattern, r) for r in responses]
-    return [0.5 if m else 0.0 for m in matches]
+    return [0.75 if m else 0.0 for m in matches]
 
 def soft_format_reward_func(completions, **kwargs) -> list[float]:
     pattern = r"<reasoning>.*?</reasoning>\s*<answer>.*?</answer>"
     responses = [completion[0]["content"] for completion in completions]
     matches = [re.match(pattern, r) for r in responses]
-    return [1.0 if m else 0.0 for m in matches]
+    return [0.25 if m else 0.0 for m in matches]
 
 def count_xml(text: str) -> float:
     count = 0.0
     if text.count("<reasoning>\n") == 1:
-        count += 0.125
+        count += 0.1
     if text.count("\n</reasoning>\n") == 1:
-        count += 0.125
+        count += 0.1
     if text.count("\n<answer>\n") == 1:
-        count += 0.125
+        count += 0.1
     if text.count("\n</answer>\n") == 1:
-        count += 0.125
+        count += 0.1
         count -= (len(text.split("\n</answer>\n")[-1])) * 0.001
     return count
 

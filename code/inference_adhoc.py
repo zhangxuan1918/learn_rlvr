@@ -6,7 +6,7 @@ from inference_helper import generate, load_lora_adapter, load_model_for_inferen
 
 if __name__ == "__main__":
     model_name = "Qwen/Qwen2.5-3B-Instruct"
-    lora_adapter_path = "grpo_saved_lora"
+    lora_adapter_path = f"output/grpo/{model_name}/grpo_saved_lora"
     questions = [
         "Andrea has 8 more apples than Jamal and half as many bananas as Jamal. Jamal has 4 more bananas than apples. How many fruits are there if Andrea has 52 apples?",
         "A robe takes 2 bolts of blue fiber and half that much white fiber.  How many bolts in total does it take?",
@@ -18,7 +18,7 @@ if __name__ == "__main__":
         "Nancy is returning her overdue books to the library. She owes $0.50 cents each on 8 books, plus a flat $2.00 fee for having at least one book that's over a week overdue. How much does she have to pay total?",
 
     ]
-    # With lora adapter
+    # Load base model
     model_base, tokenizer = load_model_for_inference(
         model_name=model_name,
         max_seq_length=2048,
@@ -47,4 +47,4 @@ if __name__ == "__main__":
         print("=" * 20)
         print(f"Question: {question}")
         print(f"base_response: {base_response}")
-        # print(f"grpo_response: {grpo_response}")
+        print(f"grpo_response: {grpo_response}")
