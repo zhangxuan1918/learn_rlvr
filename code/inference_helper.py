@@ -8,10 +8,10 @@ def generate(
     model,
     tokenizer,
     questions: list[str],
-    temperature: float = 0.7,
-    top_p: float = 0.95,
-    top_k: int = 40,
-    max_tokens: int = 1024,
+    temperature: float | None = 0.7,
+    top_p: float | None = 0.95,
+    top_k: int | None = 40,
+    max_new_tokens: int = 512,
     do_sample: bool = True,
     system_prompt: str = SYSTEM_PROMPT,
 ) -> list[str]:
@@ -26,16 +26,21 @@ def generate(
         )
         for question in questions
     ]
+    # For unknown reason, tokenizer.padding_side is reset to be "right"
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
     inputs = {k: v.to(model.device) for k, v in inputs.items()}
-    outputs = model.generate(
-        **inputs,
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        max_new_tokens=max_tokens,
-        do_sample=do_sample,  # Greedy decode if do_sample=False
-    )
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            max_new_tokens=max_new_tokens,
+            use_cache=True,
+            do_sample=do_sample,  # Greedy decode if do_sample=False
+        )
     generated_tokens = outputs[:, inputs["input_ids"].shape[1] :]
     generated_texts = tokenizer.batch_decode(
         generated_tokens, 
@@ -55,7 +60,10 @@ def load_model_for_inference(
         dtype=dtype,
         load_in_4bit=load_in_4bit,
     )
+    model.eval()
     FastLanguageModel.for_inference(model)
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
     return model, tokenizer
 
 

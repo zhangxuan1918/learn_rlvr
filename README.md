@@ -18,5 +18,5 @@ Eval setup
 
 | Model | PASS@1 |
 | ----- | --------------- |
-| Base  ||
-| post-trained (GRPO) ||
+| Base  |12.17%|
+| post-trained (GRPO) |16.54%|
