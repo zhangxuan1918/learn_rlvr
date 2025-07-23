@@ -16,6 +16,11 @@ Since we are using QLora and we have small number paramters to train. We don't n
 ![clipping_ratio](docs/training/train_clipping_ratio.png)
 ### GSM8K Eval
 
+| Model | PASS@1 |
+| ----- | --------------- |
+| Base  |69.7%|
+| GRPO  |81.1%|
+
 Eval setup
 * max output token: 1024
 * max sequence length: 2048
@@ -53,11 +58,6 @@ Eval setup
       ```text
       {question}
       ```
-
-| Model | PASS@1 |
-| ----- | --------------- |
-| Base  |69.7%|
-| GRPO  |81.1%|
 
 ### Implementation Issues
 
