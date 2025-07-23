@@ -59,6 +59,10 @@ Eval setup
       {question}
       ```
 
+The reported GSM8K metric for Qwen 2.5 3B Instruct model is 86.7. The performance difference could due to
+1. different prompt: I didn't find the prompt used in Qwen 2.5 report
+2. the model is loaded in 4bits
+
 ### Implementation Issues
 
 1. when using flashinfer together with Unsloth, it complains about Ninja not find when compling flashinfer. Even through the package is installed in the conda enviorment.

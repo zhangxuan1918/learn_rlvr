@@ -77,13 +77,13 @@ def train(
     dataset = get_gsm8k_questions()
     trainer = get_trainer(training_config, model, tokenizer, dataset)
     trainer.train()
-    model.save_lora("grpo_saved_lora")
+    model.save_lora(os.path.join(output_dir, "grpo_saved_lora"))
 
 
 if __name__ == "__main__":
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
-        wandb.init(project="learn-rlvr", config=get_train_config().to_dict())
+        wandb.init(project="learn-rlvr", config=get_train_config().to_dict(), name="grpo_qwen2.5-3b-instruct")
         report_to = "wandb"
     else:
         report_to = "none"
