@@ -1,7 +1,6 @@
 from data import SYSTEM_PROMPT
 
 from unsloth import FastLanguageModel
-from peft import PeftModel
 import torch
 
 
@@ -71,12 +70,3 @@ def load_model_for_inference(
     tokenizer.padding_side = "left"
     return model, tokenizer
 
-
-def load_lora_adapter(
-    model_base, lora_adapter_path: str, adapter_name: str = "default"
-):
-    return PeftModel.from_pretrained(
-        model=model_base,
-        model_id=lora_adapter_path,
-        adapter_name=adapter_name,
-    )

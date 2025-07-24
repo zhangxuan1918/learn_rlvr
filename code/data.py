@@ -39,7 +39,7 @@ def get_gsm8k_dataset(split = "train"):
 
 def get_open_math_reasoning_dataset(split = "cot"):
     data = load_dataset("unsloth/OpenMathReasoning-mini", split=split)
-    data = data.to_pandas()["expected_answer", "problem", "generated_solution"]
+    data = data.select_columns(["problem", "generated_solution", "expected_answer"])
     # Filter out prompts with non-numeric expected answer
     data = data.filter(lambda example: example["expected_answer"].isnumeric())
     
@@ -59,7 +59,7 @@ def get_open_math_reasoning_dataset(split = "cot"):
             "answer": expected_answer,
             "thoughts": thoughts,
         }
-    data = data.map(format_data, batched=True)
+    data = data.map(format_data)
     return data
 
 # Extract answer helper functions
