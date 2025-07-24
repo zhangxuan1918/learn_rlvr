@@ -1,8 +1,7 @@
-
-import torch
 from data import SYSTEM_PROMPT_DETAILED, SYSTEM_PROMPT
 from inference_helper import generate, load_lora_adapter, load_model_for_inference
 
+import torch
 
 if __name__ == "__main__":
     model_name = "Qwen/Qwen2.5-3B-Instruct"

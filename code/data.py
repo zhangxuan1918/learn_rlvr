@@ -14,7 +14,7 @@ SYSTEM_PROMPT_DETAILED = """Respond in the following format:
 Put your reasoning here.
 </reasoning>
 <answer>
-Put your answer here. The answer should be an integer.
+Put your answer here. The answer should be a numeric value.
 </answer>"""
 
 XML_COT_FORMAT = """\
@@ -25,6 +25,44 @@ XML_COT_FORMAT = """\
 {answer}
 </answer>"""
 
+# Loads dataset helper functions
+def get_gsm8k_dataset(split = "train"):
+    data = load_dataset("openai/gsm8k", "main", split=split)
+    data = data.map(lambda x: {
+        "prompt": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": x["question"]},
+        ],
+        "answer": extract_hash_answer(x["answer"])
+    })
+    return data
+
+def get_open_math_reasoning_dataset(split = "cot"):
+    data = load_dataset("unsloth/OpenMathReasoning-mini", split=split)
+    data = data.to_pandas()["expected_answer", "problem", "generated_solution"]
+    # Filter out prompts with non-numeric expected answer
+    data = data.filter(lambda example: example["expected_answer"].isnumeric())
+    
+    # Format dataset
+    def format_data(x):
+        expected_answer = x["expected_answer"].strip()
+        problem = x["problem"].strip()
+        # Replace <think> by <reasoning>, </think> by </reasoning>
+        thoughts = x["generated_solution"]
+        thoughts = thoughts.replace("<think>", "").replace("</think>", "").strip()
+        return {
+            "prompt": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": problem},
+                {"role": "assistant", "content": XML_COT_FORMAT.format(reasoning=thoughts, answer=expected_answer)},
+            ],
+            "answer": expected_answer,
+            "thoughts": thoughts,
+        }
+    data = data.map(format_data, batched=True)
+    return data
+
+# Extract answer helper functions
 def extract_xml_answer(text: str) -> str:
     match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
 
@@ -38,18 +76,7 @@ def extract_hash_answer(text: str) -> str | None:
         return None
     return text.split("####")[1].strip()
 
-def get_gsm8k_questions(split = "train"):
-    data = load_dataset("openai/gsm8k", "main", split=split)
-    data = data.map(lambda x: {
-        "prompt": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": x["question"]},
-        ],
-        "answer": extract_hash_answer(x["answer"])
-    })
-    return data
-
-
+# Reward functions
 def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
     question = prompts[0][-1]["content"]

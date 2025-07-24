@@ -1,7 +1,8 @@
+from data import SYSTEM_PROMPT
+
 from unsloth import FastLanguageModel
 from peft import PeftModel
 import torch
-from data import SYSTEM_PROMPT
 
 
 def generate(

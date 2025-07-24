@@ -1,13 +1,13 @@
-import os
 from model import get_model
 from data import (
-    get_gsm8k_questions,
+    get_gsm8k_dataset,
     xmlcount_reward_func,
     strict_format_reward_func,
     correctness_reward_func,
     int_reward_func,
     soft_format_reward_func,
 )
+import os
 from trl import GRPOConfig, GRPOTrainer
 import wandb
 from dotenv import load_dotenv
@@ -74,22 +74,23 @@ def train(
         gpu_memory_utilization=gpu_memory_utilization,
     )
     training_config = get_train_config(report_to=report_to, output_dir=output_dir)
-    dataset = get_gsm8k_questions()
+    dataset = get_gsm8k_dataset()
     trainer = get_trainer(training_config, model, tokenizer, dataset)
     trainer.train()
     model.save_lora(os.path.join(output_dir, "grpo_saved_lora"))
 
 
 if __name__ == "__main__":
+    run_num = 2
+    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    output_dir = f"output/grpo/{model_name}-run{run_num}"
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
-        wandb.init(project="learn-rlvr", config=get_train_config().to_dict(), name="grpo_qwen2.5-3b_instruct_run2")
+        wandb.init(project="learn-rlvr", config=get_train_config().to_dict(), name=f"grpo_{model_name}_run{run_num}")
         report_to = "wandb"
     else:
         report_to = "none"
     
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
-    output_dir = f"output/grpo/{model_name}-run2/"
     train(
         model_name=model_name,
         max_seq_length=2048,
