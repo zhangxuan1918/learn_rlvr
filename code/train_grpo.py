@@ -83,20 +83,20 @@ def train(
 if __name__ == "__main__":
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
-        wandb.init(project="learn-rlvr", config=get_train_config().to_dict(), name="grpo_qwen2.5-3b-instruct")
+        wandb.init(project="learn-rlvr", config=get_train_config().to_dict(), name="grpo_qwen2.5-3b_instruct_run2")
         report_to = "wandb"
     else:
         report_to = "none"
     
     model_name = "Qwen/Qwen2.5-3B-Instruct"
-    output_dir = f"output/grpo/{model_name}/"
+    output_dir = f"output/grpo/{model_name}-run2/"
     train(
         model_name=model_name,
         max_seq_length=2048,
         load_in_4bit=True,
         fast_inference=True,
         lora_rank=64,
-        gpu_memory_utilization=0.5,
+        gpu_memory_utilization=0.7,
         report_to=report_to,
         output_dir=output_dir,
     )

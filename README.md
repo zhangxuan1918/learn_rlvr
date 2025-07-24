@@ -6,6 +6,8 @@ Due to GPU memory, we use QLora to do RLVR. We use Unsloth for QLora and Hugging
 ### Setup
 * base model: Qwen/Qwen2.5-3B-Instruct, 4bits
 * lora adapter: rank 64, bf16
+* KL coef is 0.0
+* reward is normalized
 
 ### Training
 
