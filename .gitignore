@@ -216,3 +216,6 @@ unsloth_compiled_cache/
 output/
 grpo_trainer_lora_model
 grpo_saved_lora
+
+# Docss
+.DS_Store
