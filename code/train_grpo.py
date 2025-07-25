@@ -1,13 +1,13 @@
-import os
-from model import get_model
+from model import get_model, load_lora_adapter
 from data import (
-    get_gsm8k_questions,
+    get_gsm8k_dataset,
     xmlcount_reward_func,
     strict_format_reward_func,
     correctness_reward_func,
     int_reward_func,
     soft_format_reward_func,
 )
+import os
 from trl import GRPOConfig, GRPOTrainer
 import wandb
 from dotenv import load_dotenv
@@ -64,6 +64,7 @@ def train(
     gpu_memory_utilization: float,
     report_to: str,
     output_dir: str,
+    lora_adapter_path: str | None = None,
 ):
     model, tokenizer = get_model(
         model_name=model_name,
@@ -73,23 +74,37 @@ def train(
         lora_rank=lora_rank,
         gpu_memory_utilization=gpu_memory_utilization,
     )
+    if lora_adapter_path:
+        model = load_lora_adapter(
+            model_base=model,
+            lora_adapter_path=lora_adapter_path,
+            adapter_name="sft_saved_lora",
+            is_trainable=True,
+        )
     training_config = get_train_config(report_to=report_to, output_dir=output_dir)
-    dataset = get_gsm8k_questions()
+    dataset = get_gsm8k_dataset()
     trainer = get_trainer(training_config, model, tokenizer, dataset)
     trainer.train()
-    model.save_lora(os.path.join(output_dir, "grpo_saved_lora"))
+    model.save_pretrained(os.path.join(output_dir, "grpo_saved_lora"))
 
 
 if __name__ == "__main__":
+    run_num = 2
+    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    output_dir = f"output/grpo/{model_name}/run{run_num}"
+    # If we first sft the model, we need to load the lora adapter
+    lora_adapter_path = None
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
-        wandb.init(project="learn-rlvr", config=get_train_config().to_dict(), name="grpo_qwen2.5-3b_instruct_run2")
+        wandb.init(
+            project="learn-rlvr",
+            config=get_train_config().to_dict(),
+            name=f"grpo_{model_name}_run{run_num}",
+        )
         report_to = "wandb"
     else:
         report_to = "none"
-    
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
-    output_dir = f"output/grpo/{model_name}-run2/"
+
     train(
         model_name=model_name,
         max_seq_length=2048,
@@ -99,7 +114,6 @@ if __name__ == "__main__":
         gpu_memory_utilization=0.7,
         report_to=report_to,
         output_dir=output_dir,
+        lora_adapter_path=lora_adapter_path,
     )
     wandb.finish()
-
-

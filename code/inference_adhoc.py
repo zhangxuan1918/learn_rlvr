@@ -1,12 +1,15 @@
-
-import torch
 from data import SYSTEM_PROMPT_DETAILED, SYSTEM_PROMPT
-from inference_helper import generate, load_lora_adapter, load_model_for_inference
-
+from inference_helper import generate, load_model_for_inference
+from model import load_lora_adapter
+import torch
 
 if __name__ == "__main__":
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
-    lora_adapter_path = f"output/grpo/{model_name}/grpo_saved_lora"
+    # run_num = 1
+    # model_name = "Qwen/Qwen2.5-3B-Instruct"
+    # lora_adapter_path = f"output/grpo/{model_name}/run{run_num}/grpo_saved_lora"
+    run_num = 1
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+    lora_adapter_path = f"output/sft/{model_name}/run{run_num}/sft_saved_lora"
     questions = [
         "Andrea has 8 more apples than Jamal and half as many bananas as Jamal. Jamal has 4 more bananas than apples. How many fruits are there if Andrea has 52 apples?",
         "A robe takes 2 bolts of blue fiber and half that much white fiber.  How many bolts in total does it take?",
@@ -19,32 +22,23 @@ if __name__ == "__main__":
 
     ]
     # Load base model
-    model_base, tokenizer = load_model_for_inference(
+    model, tokenizer = load_model_for_inference(
         model_name=model_name,
         max_seq_length=2048,
         dtype=torch.float16,
         load_in_4bit=True
     )
-    # Without lora adapter
-    base_responses= generate(
-        model=model_base, 
-        tokenizer=tokenizer, 
-        questions=questions,
-        system_prompt=SYSTEM_PROMPT_DETAILED,
-        do_sample=False
-    )
+    if lora_adapter_path:
+        model = load_lora_adapter(model, lora_adapter_path=lora_adapter_path)
 
-    # With lora adapter
-    model_peft = load_lora_adapter(model_base, lora_adapter_path=lora_adapter_path, adapter_name="grpo_saved_lora")
-    grpo_responses = generate(
-        model=model_peft, 
+    responses = generate(
+        model=model, 
         tokenizer=tokenizer, 
         questions=questions,
         system_prompt=SYSTEM_PROMPT,
-        do_sample=False
+        do_sample=False,
+        return_prompt=True
     )
-    for question, base_response, grpo_response in zip(questions, base_responses, grpo_responses):
+    for response in responses:
         print("=" * 20)
-        print(f"Question: {question}")
-        print(f"base_response: {base_response}")
-        print(f"grpo_response: {grpo_response}")
+        print(response)
