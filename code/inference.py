@@ -66,12 +66,13 @@ def evaluate_gsm8k(
 
 
 if __name__ == "__main__":
+    run_num = 2
     model_name = "Qwen/Qwen2.5-3B-Instruct"
 
-    lora_adapter_path = "grpo_saved_lora"
+    lora_adapter_path = f"output/grpo/{model_name}/run{run_num}/grpo_saved_lora"
     accuracy_grpo = evaluate_gsm8k(model_name=model_name, lora_adapter_path=lora_adapter_path, batch_size=256)
     print(f"\n✅ GSM8K Accuracy (GRPO): {accuracy_grpo:.2%}")
 
-    accuracy_base = evaluate_gsm8k(model_name=model_name, batch_size=256)
-    print(f"\n✅ GSM8K Accuracy (Base): {accuracy_base:.2%}")
-    print(f"\n✅ GSM8K Accuracy (GRPO): {accuracy_grpo:.2%}")
+    # accuracy_base = evaluate_gsm8k(model_name=model_name, batch_size=256)
+    # print(f"\n✅ GSM8K Accuracy (Base): {accuracy_base:.2%}")
+    # print(f"\n✅ GSM8K Accuracy (GRPO): {accuracy_grpo:.2%}")

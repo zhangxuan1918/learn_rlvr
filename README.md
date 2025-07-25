@@ -14,14 +14,16 @@ Due to GPU memory, we use QLora to do RLVR. We use Unsloth for QLora and Hugging
 Since we are using QLora and we have small number paramters to train. We don't notice anything abnormal in the training.
 
 ![correctness_reward](docs/training/train_correctness_reward.png)
+![format_reward](docs/training/train_strict_format_reward.png)
 ![completion_length](docs/training/train_completion_length.png)
 ![clipping_ratio](docs/training/train_clipping_ratio.png)
 ### GSM8K Eval
 
-| Model | PASS@1 |
-| ----- | --------------- |
-| Base  |69.7%|
-| GRPO  |81.1%|
+| Model | PASS@1 | Comment |
+| ----- | ------ | ------- |
+| Base  |69.7%   |         |
+| GRPO  |81.1%   |  run1   |
+| GRPO  |81.1%   |  run2, small changes in rewards |
 
 Eval setup
 * max output token: 1024
@@ -75,3 +77,6 @@ The reported GSM8K metric for Qwen 2.5 3B Instruct model is 86.7. The performanc
    * for unknown reason, padding_side is reset to "right" after the first batch inference. [link](https://github.com/unslothai/unsloth/issues/267)
 
 ## Qwen/Qwen2.5-0.5B-Instruct
+Qwen2.5-0.5B-Instruct doesn't follow the instruction properly. Thus, we first do SFT such that the model can output in the expected format.
+
+### SFT
