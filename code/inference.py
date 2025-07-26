@@ -4,8 +4,8 @@ from data import (
     extract_xml_answer,
     get_gsm8k_dataset,
 )
-from inference_helper import generate, load_lora_adapter, load_model_for_inference
-
+from inference_helper import generate, load_model_for_inference
+from model import load_lora_adapter
 import torch
 from tqdm import tqdm
 
@@ -82,13 +82,15 @@ def evaluate_gsm8k(
 
 
 if __name__ == "__main__":
-    run_num = 2
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    run_num = 5
+    train_method = "sft"
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
 
-    lora_adapter_path = f"output/grpo/{model_name}/run{run_num}/grpo_saved_lora"
-    accuracy_grpo = evaluate_gsm8k(model_name=model_name, lora_adapter_path=lora_adapter_path, batch_size=256)
-    print(f"\n✅ GSM8K Accuracy (GRPO): {accuracy_grpo:.2%}")
-
-    # accuracy_base = evaluate_gsm8k(model_name=model_name, batch_size=256)
-    # print(f"\n✅ GSM8K Accuracy (Base): {accuracy_base:.2%}")
-    # print(f"\n✅ GSM8K Accuracy (GRPO): {accuracy_grpo:.2%}")
+    if train_method in ["sft", "grpo"]:
+        lora_adapter_path = f"output/{train_method}/{model_name}/run{run_num}/{train_method}_saved_lora"
+    else:
+        lora_adapter_path = None
+    accuracy = evaluate_gsm8k(
+        model_name=model_name, lora_adapter_path=lora_adapter_path, batch_size=256
+    )
+    print(f"\n✅ GSM8K Accuracy ({train_method}): {accuracy:.1%}")

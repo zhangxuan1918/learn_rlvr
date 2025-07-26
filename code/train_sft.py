@@ -14,15 +14,15 @@ def get_train_config(
 ):
     return SFTConfig(
         dataset_text_field=input_name,
-        learning_rate=2e-5,
+        learning_rate=5e-4,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.01,
         warmup_ratio=0.1,
         lr_scheduler_type="cosine",
         optim="adamw_8bit",
-        logging_steps=5,
-        per_device_train_batch_size=64,
+        logging_steps=1,
+        per_device_train_batch_size=8,
         gradient_accumulation_steps=1,
         num_train_epochs=2,
         report_to=report_to,
@@ -40,14 +40,16 @@ def get_trainer(training_config, model, tokenizer, dataset):
 
 
 def preprocess_dataset(dataset, tokenizer, max_seq_length: int, input_name="text"):
+    input_length_name = f"{input_name}_length"
     def _apply_chat_template(example):
         example[input_name] = tokenizer.apply_chat_template(
             example["prompt"], tokenize=False
         )
+        example[input_length_name] = len(tokenizer(example[input_name])["input_ids"])
         return example
 
     return dataset.map(_apply_chat_template).filter(
-        lambda example: len(tokenizer(example[input_name])["input_ids"]) <= max_seq_length
+        lambda example: example[input_length_name] <= max_seq_length
     )
 
 
@@ -93,7 +95,7 @@ def train(
 
 if __name__ == "__main__":
 
-    run_num = 3
+    run_num = 5
     model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     output_dir = f"output/sft/{model_name}/run{run_num}"
 

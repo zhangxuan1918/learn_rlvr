@@ -17,8 +17,7 @@ Put your reasoning here.
 Put your answer here. The answer should be a numeric value.
 </answer>"""
 
-XML_COT_FORMAT = """\
-<reasoning>
+XML_COT_FORMAT = """<reasoning>
 {reasoning}
 </reasoning>
 <answer>
@@ -98,7 +97,7 @@ def strict_format_reward_func(completions, **kwargs) -> list[float]:
 def soft_format_reward_func(completions, **kwargs) -> list[float]:
     pattern = r"<reasoning>.*?</reasoning>\s*<answer>.*?</answer>"
     responses = [completion[0]["content"] for completion in completions]
-    matches = [re.match(pattern, r) for r in responses]
+    matches = [re.match(pattern, r, flags=re.DOTALL) for r in responses]
     return [0.25 if m else 0.0 for m in matches]
 
 def count_xml(text: str) -> float:

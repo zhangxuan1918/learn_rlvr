@@ -1,7 +1,8 @@
+import torch
 from unsloth import FastLanguageModel
 from peft import PeftModel
 
-def get_model(model_name: str, max_seq_length: int, load_in_4bit: bool, fast_inference: bool, lora_rank: int, gpu_memory_utilization: float):
+def get_model(model_name: str, max_seq_length: int, load_in_4bit: bool, fast_inference: bool, lora_rank: int, gpu_memory_utilization: float, lora_adapter_path: str | None = None):
     
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
@@ -9,6 +10,7 @@ def get_model(model_name: str, max_seq_length: int, load_in_4bit: bool, fast_inf
         load_in_4bit=load_in_4bit,
         fast_inference=fast_inference,
         max_lora_rank=lora_rank,
+        dtype=torch.bfloat16,
         gpu_memory_utilization=gpu_memory_utilization
     )
 
@@ -25,9 +27,13 @@ def get_model(model_name: str, max_seq_length: int, load_in_4bit: bool, fast_inf
             "down_proj",
         ],
         lora_alpha=lora_rank * 2,
-        use_gradient_checkpointing=True,
+        use_gradient_checkpointing="unsloth", # type: ignore
         random_state=42,
         )
+
+    if lora_adapter_path:
+        model.load_adapter(lora_adapter_path, adapter_name="default")
+
     return model, tokenizer
 
 

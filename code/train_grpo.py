@@ -73,14 +73,9 @@ def train(
         fast_inference=fast_inference,
         lora_rank=lora_rank,
         gpu_memory_utilization=gpu_memory_utilization,
+        lora_adapter_path=lora_adapter_path,
     )
-    if lora_adapter_path:
-        model = load_lora_adapter(
-            model_base=model,
-            lora_adapter_path=lora_adapter_path,
-            adapter_name="sft_saved_lora",
-            is_trainable=True,
-        )
+
     training_config = get_train_config(report_to=report_to, output_dir=output_dir)
     dataset = get_gsm8k_dataset()
     trainer = get_trainer(training_config, model, tokenizer, dataset)
@@ -89,11 +84,11 @@ def train(
 
 
 if __name__ == "__main__":
-    run_num = 2
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    run_num = 1
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     output_dir = f"output/grpo/{model_name}/run{run_num}"
     # If we first sft the model, we need to load the lora adapter
-    lora_adapter_path = None
+    lora_adapter_path = f"output/sft/{model_name}/run1/sft_saved_lora"
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(
