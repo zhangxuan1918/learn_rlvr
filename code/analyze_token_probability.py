@@ -1,7 +1,7 @@
 import re
 from inference_helper import generate, load_model_for_inference
 from model import load_lora_adapter
-from data import SYSTEM_PROMPT
+from data import SYSTEM_PROMPT, SYSTEM_PROMPT_DETAILED
 
 import torch
 import torch.nn.functional as F
@@ -87,31 +87,34 @@ def export_colored_words_to_markdown(words: list[str], values: list[float]):
         spans.append(span)
     return " ".join(spans)
 
-def compare_token_probability(base_model, peft_model, tokenizer, question: str):
+def compare_token_probability(ref_model, model, tokenizer, question: str, system_prompt: str, user_prompt: str):
+    formatted_question = user_prompt.format(question=question)
     # Get peft model response
     response = generate(
-        model=peft_model,
+        model=model,
         tokenizer=tokenizer,
-        questions=[question],
-        system_prompt=SYSTEM_PROMPT,
+        questions=[formatted_question],
+        system_prompt=system_prompt,
         do_sample=False,
         return_prompt=False,
         skip_special_tokens=False,
         clean_up_tokenization_spaces=True
     )[0]
 
-    # Compute peft model token prob
+    # Compute model token prob
     tokens, peft_token_probs = get_token_probability(
-        model=peft_model,
+        model=model,
         tokenizer=tokenizer,
-        question=question,
+        system_prompt=system_prompt,
+        question=formatted_question,
         response=response,
     )
-    # Compute base model token prob
+    # Compute ref model token prob
     _, base_token_probs = get_token_probability(
-        model=base_model,
+        model=ref_model,
         tokenizer=tokenizer,
-        question=question,
+        system_prompt=system_prompt,
+        question=formatted_question,
         response=response,
     )
 
@@ -129,20 +132,18 @@ def compare_token_probability(base_model, peft_model, tokenizer, question: str):
     )
 
     print("-" * 20)
-    print(export_colored_words_to_markdown(
-        words=cleaned_tokens,
-        values=(peft_token_probs - base_token_probs)[0].tolist(),
-    ))
+    # print(export_colored_words_to_markdown(
+    #     words=cleaned_tokens,
+    #     values=(peft_token_probs - base_token_probs)[0].tolist(),
+    # ))
 
 if __name__ == "__main__":
     model_name = "Qwen/Qwen2.5-3B-Instruct"
     run_num = 1
     lora_adapter_path = f"output/grpo/{model_name}/run{run_num}/grpo_saved_lora"
 
-    question = "Gloria is shoe shopping when she comes across a pair of boots that fit her shoe budget. However, she has to choose between the boots and two pairs of high heels that together cost five dollars less than the boots. If one pair of heels costs $33 and the other costs twice as much, how many dollars are the boots?"
-
+    question = "Janet buys a brooch for her daughter. She pays $500 for the material to make it and then another $800 for the jeweler to construct it. After that, she pays 10% of that to get it insured. How much did she pay?"
     # Load base model
-
     base_model, tokenizer = load_model_for_inference(
         model_name=model_name,
         max_seq_length=2048,
@@ -163,8 +164,19 @@ if __name__ == "__main__":
     )
 
     compare_token_probability(
-        base_model=base_model,
-        peft_model=peft_model,
+        ref_model=base_model,
+        model=peft_model,
         tokenizer=tokenizer,
         question=question,
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt="{question}",
+    )
+
+    compare_token_probability(
+        ref_model=peft_model,
+        model=base_model,
+        tokenizer=tokenizer,
+        question=question,
+        system_prompt= SYSTEM_PROMPT_DETAILED,
+        user_prompt="{question}\nLet's think step by step.",
     )

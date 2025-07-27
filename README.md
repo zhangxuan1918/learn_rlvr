@@ -20,7 +20,7 @@ Since we are using QLora and we have small number paramters to train. We don't n
 
 | Model | PASS@1 | Comment |
 | ----- | ------ | ------- |
-| Base  |69.7%   |         |
+| Base  |69.7%   |  Append "Let's think step by step" in user turn  |
 | GRPO  |81.1%   |  run1   |
 | GRPO  |81.1%   |  run2, small changes in rewards |
 
@@ -68,13 +68,24 @@ The reported GSM8K metric for Qwen 2.5 3B Instruct model is 86.7. The performanc
 3. instruction following issue: I also saw "many" cases where the base model is able to output the correct answer but the format is wrong, e.g. instead of an integer in the `<answer>` tag, it outputs a sentence or units followed by the answer
 
 ### Token Probability
-![token_probability](docs/training/3B_Instruct/token_probability.png)
+We also compare the token probability between base and peft model.
+
+Here is a question from GSM8K test dataset where base model gives wrong answer while peft model gives correct answer.
+
+Question: Janet buys a brooch for her daughter. She pays $500 for the material to make it and then another $800 for the jeweler to construct it. After that, she pays 10% of that to get it insured. How much did she pay?
+
+* red: samller probability
+* yellow: equal probability
+* green: larger proability
+
+| peft model output | base model output |
+| ----------------- | ----------------- |
+| ![peft model token probability](docs/training/3B_Instruct/peft_model_token_probability.png) |![base model token probability](docs/training/3B_Instruct/base_model_token_probability.png) |
 
 ### Implementation Issues
 
-1. when using flashinfer together with Unsloth, it complains about Ninja not find when compling flashinfer. Even through the package is installed in the conda enviorment.
-   * solution: install Ninja package system wide
-   * the compilation is started in a thread. Maybe python path is not properly configured
+1. when using flashinfer together with Unsloth, it complains about Ninja build failed when compling flashinfer.
+   * solution: install the latest version of Ninja
 2. when evaluating GSM8K for base model and GRPOed model, we notice the response in the second batch looks strange: wrong format, repeated tokens etc
    * solution: add ```python tokenizer.padding_side="left"``` for each batch
    * for unknown reason, padding_side is reset to "right" after the first batch inference. [link](https://github.com/unslothai/unsloth/issues/267)
@@ -91,7 +102,7 @@ We use `unsloth/OpenMathReasoning-mini` to fine tune the base model. To limit th
 | SFT   | 8.0%   | run1, batch size=64, lr=5e-5 |
 | SFT   | 19.6%   | run2, batch size=8, lr=5e-4 |
 
-We notice smaller batch size and larger learning rate gives us a better checkpoint. For run2, one of the loss pattern is the reasoning is lengthy exceeding the max sequence length. We are using checkpoint from run2 for GRPO training.
+We notice smaller batch size and larger learning rate gives us a better checkpoint. We are using checkpoint from run2 for GRPO training.
 ### Training
 
 ![correctness_reward](docs/training/0.5B_Instruct/train_correctness_reward.png)
@@ -101,6 +112,7 @@ We notice smaller batch size and larger learning rate gives us a better checkpoi
 
 | Model | PASS@1 | Comment |
 | ----- | ------ | ------- |
-| Base  | 0.0%   | response format issue |
-| SFT   | 19.6%   |  |
-| GRPO  | 37.0%   |  |
+| Base  | 0.0%   |  |
+| SFT   | 19.6%  |  |
+| SFT   | 20.3%  | Append "Let's think step by step" in user turn |
+| GRPO  | 37.0  |  |

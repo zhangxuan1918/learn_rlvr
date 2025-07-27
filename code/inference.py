@@ -15,6 +15,8 @@ def evaluate_gsm8k(
     lora_adapter_path: str | None = None,
     adapter_name: str = "default",
     batch_size=16,
+    system_prompt: str = SYSTEM_PROMPT,
+    user_prompt = "{question}\nLet's think step by step."
 ) -> float:
     gsm8k = get_gsm8k_dataset(split="test")
     model, tokenizer = load_model_for_inference(
@@ -23,16 +25,13 @@ def evaluate_gsm8k(
         load_in_4bit=True,
         max_seq_length=2048,
     )
-    system_prompt = SYSTEM_PROMPT_DETAILED
-    user_prompt = "{question}\nLet's think step by step."
+
     if lora_adapter_path:
         model = load_lora_adapter(
             model,
             lora_adapter_path=lora_adapter_path,
             adapter_name=adapter_name,
         )
-        system_prompt = SYSTEM_PROMPT
-        user_prompt = "{question}"
 
     correct = 0
     total = 0
@@ -82,14 +81,24 @@ def evaluate_gsm8k(
 
 
 if __name__ == "__main__":
-    run_num = 1
-    train_method = "grpo"
+    run_num = 5
+    train_method = "sft"
     model_name = "Qwen/Qwen2.5-0.5B-Instruct"
 
     if train_method in ["sft", "grpo"]:
         lora_adapter_path = f"output/{train_method}/{model_name}/run{run_num}/{train_method}_saved_lora"
     else:
+        # Base model
         lora_adapter_path = None
+    # For Base and SFTed model, we use the detailed prompt plus think step by step instruction
+    system_prompt = SYSTEM_PROMPT_DETAILED
+    user_prompt = "{question}\nLet's think step by step."
+
+    if train_method == "grpo":
+        # For GRPO model, we use the simple prompt without the think step by step instruction
+        system_prompt = SYSTEM_PROMPT
+        user_prompt = "{question}"
+
     accuracy = evaluate_gsm8k(
         model_name=model_name, lora_adapter_path=lora_adapter_path, batch_size=256
     )
