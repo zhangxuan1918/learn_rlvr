@@ -21,7 +21,7 @@ def evaluate_gsm8k(
     gsm8k = get_gsm8k_dataset(split="test")
     model, tokenizer = load_model_for_inference(
         model_name=model_name,
-        dtype=torch.float16,
+        dtype=torch.bfloat16,
         load_in_4bit=True,
         max_seq_length=2048,
     )
