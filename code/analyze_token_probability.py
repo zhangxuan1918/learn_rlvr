@@ -97,7 +97,7 @@ def compare_token_probability(base_model, peft_model, tokenizer, question: str):
         do_sample=False,
         return_prompt=False,
         skip_special_tokens=False,
-        clean_up_tokenization_spaces=False
+        clean_up_tokenization_spaces=True
     )[0]
 
     # Compute peft model token prob
