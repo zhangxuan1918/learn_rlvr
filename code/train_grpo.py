@@ -88,7 +88,7 @@ if __name__ == "__main__":
     model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     output_dir = f"output/grpo/{model_name}/run{run_num}"
     # If we first sft the model, we need to load the lora adapter
-    lora_adapter_path = f"output/sft/{model_name}/run1/sft_saved_lora"
+    lora_adapter_path = f"output/sft/{model_name}/run5/sft_saved_lora"
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(
