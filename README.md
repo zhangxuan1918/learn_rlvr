@@ -67,21 +67,6 @@ The reported GSM8K metric for Qwen 2.5 3B Instruct model is 86.7. The performanc
 2. the model is loaded in 4bits
 3. instruction following issue: I also saw "many" cases where the base model is able to output the correct answer but the format is wrong, e.g. instead of an integer in the `<answer>` tag, it outputs a sentence or units followed by the answer
 
-### Token Probability
-We also compare the token probability between base and peft model.
-
-Here is a question from GSM8K test dataset where base model gives wrong answer while peft model gives correct answer.
-
-Question: Janet buys a brooch for her daughter. She pays $500 for the material to make it and then another $800 for the jeweler to construct it. After that, she pays 10% of that to get it insured. How much did she pay?
-
-* red: samller probability
-* yellow: equal probability
-* green: larger proability
-
-| peft model output | base model output |
-| ----------------- | ----------------- |
-| ![peft model token probability](docs/training/3B_Instruct/peft_model_token_probability.png) |![base model token probability](docs/training/3B_Instruct/base_model_token_probability.png) |
-
 ### Implementation Issues
 
 1. when using flashinfer together with Unsloth, it complains about Ninja build failed when compling flashinfer.
@@ -115,4 +100,4 @@ We notice smaller batch size and larger learning rate gives us a better checkpoi
 | Base  | 0.0%   |  |
 | SFT   | 19.6%  |  |
 | SFT   | 20.3%  | Append "Let's think step by step" in user turn |
-| GRPO  | 37.0  |  |
+| GRPO  | 37.0%  |  |

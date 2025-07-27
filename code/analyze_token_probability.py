@@ -87,7 +87,7 @@ def export_colored_words_to_markdown(words: list[str], values: list[float]):
         spans.append(span)
     return " ".join(spans)
 
-def compare_token_probability(ref_model, model, tokenizer, question: str, system_prompt: str, user_prompt: str):
+def compare_token_probability(ref_model, model, tokenizer, question: str, system_prompt: str, user_prompt: str, max_new_tokens: int = 1024):
     formatted_question = user_prompt.format(question=question)
     # Get peft model response
     response = generate(
@@ -95,6 +95,7 @@ def compare_token_probability(ref_model, model, tokenizer, question: str, system
         tokenizer=tokenizer,
         questions=[formatted_question],
         system_prompt=system_prompt,
+        max_new_tokens=max_new_tokens,
         do_sample=False,
         return_prompt=False,
         skip_special_tokens=False,
@@ -139,7 +140,7 @@ def compare_token_probability(ref_model, model, tokenizer, question: str, system
 
 if __name__ == "__main__":
     model_name = "Qwen/Qwen2.5-3B-Instruct"
-    run_num = 1
+    run_num = 2
     lora_adapter_path = f"output/grpo/{model_name}/run{run_num}/grpo_saved_lora"
 
     question = "Janet buys a brooch for her daughter. She pays $500 for the material to make it and then another $800 for the jeweler to construct it. After that, she pays 10% of that to get it insured. How much did she pay?"
@@ -170,6 +171,7 @@ if __name__ == "__main__":
         question=question,
         system_prompt=SYSTEM_PROMPT,
         user_prompt="{question}",
+        max_new_tokens=1024,
     )
 
     compare_token_probability(
@@ -179,4 +181,5 @@ if __name__ == "__main__":
         question=question,
         system_prompt= SYSTEM_PROMPT_DETAILED,
         user_prompt="{question}\nLet's think step by step.",
+        max_new_tokens=1024,
     )
