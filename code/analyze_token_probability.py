@@ -133,10 +133,10 @@ def compare_token_probability(ref_model, model, tokenizer, question: str, system
     )
 
     print("-" * 20)
-    # print(export_colored_words_to_markdown(
-    #     words=cleaned_tokens,
-    #     values=(peft_token_probs - base_token_probs)[0].tolist(),
-    # ))
+    print(export_colored_words_to_markdown(
+        words=cleaned_tokens,
+        values=(peft_token_probs - base_token_probs)[0].tolist(),
+    ))
 
 if __name__ == "__main__":
     model_name = "Qwen/Qwen2.5-3B-Instruct"

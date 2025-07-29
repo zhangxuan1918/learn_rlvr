@@ -91,6 +91,7 @@ We notice smaller batch size and larger learning rate gives us a better checkpoi
 ### Training
 
 ![correctness_reward](docs/training/0.5B_Instruct/train_correctness_reward.png)
+![format_reward](docs/training/0.5B_Instruct/train_strict_format_reward.png)
 ![completion_length](docs/training/0.5B_Instruct/train_completion_length.png)
 
 ### GSM8K Eval
@@ -100,4 +101,4 @@ We notice smaller batch size and larger learning rate gives us a better checkpoi
 | Base  | 0.0%   |  |
 | SFT   | 19.6%  |  |
 | SFT   | 20.3%  | Append "Let's think step by step" in user turn |
-| GRPO  | 37.0%  |  |
+| GRPO  | 34.3%  |  |

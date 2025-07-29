@@ -84,7 +84,7 @@ def train(
 
 
 if __name__ == "__main__":
-    run_num = 1
+    run_num = 2
     model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     output_dir = f"output/grpo/{model_name}/run{run_num}"
     # If we first sft the model, we need to load the lora adapter

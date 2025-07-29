@@ -81,8 +81,8 @@ def evaluate_gsm8k(
 
 
 if __name__ == "__main__":
-    run_num = 5
-    train_method = "sft"
+    run_num = 2
+    train_method = "grpo"
     model_name = "Qwen/Qwen2.5-0.5B-Instruct"
 
     if train_method in ["sft", "grpo"]:
