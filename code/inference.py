@@ -81,9 +81,9 @@ def evaluate_gsm8k(
 
 
 if __name__ == "__main__":
-    run_num = 2
+    run_num = 3
     train_method = "grpo"
-    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+    model_name = "Qwen/Qwen2.5-3B-Instruct"
 
     if train_method in ["sft", "grpo"]:
         lora_adapter_path = f"output/{train_method}/{model_name}/run{run_num}/{train_method}_saved_lora"

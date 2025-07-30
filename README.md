@@ -20,36 +20,12 @@ Since we are using QLora and we have small number paramters to train. We don't n
 
 | Model | PASS@1 | Comment |
 | ----- | ------ | ------- |
-| Base  |69.7%   |  Append "Let's think step by step" in user turn  |
-| GRPO  |81.1%   |  run1   |
-| GRPO  |81.1%   |  run2, small changes in rewards |
+| Base  |2.1%   | 69.7% using alternative prompt  |
+| GRPO  |81.1%  |  |
 
-Eval setup
-* max output token: 1024
-* max sequence length: 2048
-* greedy decoding
-* base model
-  * loaded in 4 bits
-  * system prompt: 
-      ```text
-      Respond in the following format:
-      <reasoning>
-      Put your reasoning here.
-      </reasoning>
-      <answer>
-      Put your answer here. The answer should be an integer.
-      </answer>
-      ```
-  * user prompt:
-      ```text
-      {question}\nLet's think step by step.
-      ```
-* lora fine-tuned model
-  * base model weights in 4 bits
-  * weights in bf16
-  * system prompt:
-    ```text
-    Respond in the following format:
+#### Prompt
+* system prompt
+    ```Respond in the following format:
     <reasoning>
     ...
     </reasoning>
@@ -57,10 +33,29 @@ Eval setup
     ...
     </answer>
     ```
-  * user prompt:
-      ```text
-      {question}
-      ```
+* user prompt: ```{question}```
+
+We also try following alternative prompt for base model
+* system prompt
+    ```Respond in the following format:
+    <reasoning>
+    Put your reasoning here.
+    </reasoning>
+    <answer>
+    Put your answer here. The answer should be a numeric value.
+    </answer>
+    ```
+* user prompt
+    ```{question}\nLet's think step by step.```
+
+#### Eval setup
+* max output token: 1024
+* max sequence length: 2048
+* greedy decoding
+* base model: loaded in 4 bits
+* peft model
+  * base model weights frozen in 4 bits
+  * weights in bf16
 
 The reported GSM8K metric for Qwen 2.5 3B Instruct model is 86.7. The performance difference could due to
 1. different prompt: I didn't find the prompt used in Qwen 2.5 report
@@ -83,9 +78,9 @@ We use `unsloth/OpenMathReasoning-mini` to fine tune the base model. To limit th
 
 | Model | PASS@1 | Comment |
 | ----- | ------ | ------- |
-| Base  | 0.0%   | response format issue |
+| Base  | 0.0%   | 0.0% if append "Let's think step by step" in user turn  |
 | SFT   | 8.0%   | run1, batch size=64, lr=5e-5 |
-| SFT   | 19.6%   | run2, batch size=8, lr=5e-4 |
+| SFT   | 19.0%   | run2, batch size=8, lr=5e-4 |
 
 We notice smaller batch size and larger learning rate gives us a better checkpoint. We are using checkpoint from run2 for GRPO training.
 ### Training
@@ -99,6 +94,6 @@ We notice smaller batch size and larger learning rate gives us a better checkpoi
 | Model | PASS@1 | Comment |
 | ----- | ------ | ------- |
 | Base  | 0.0%   |  |
-| SFT   | 19.6%  |  |
-| SFT   | 20.3%  | Append "Let's think step by step" in user turn |
+| SFT   | 19.0%  |  |
+| SFT   | 20.3%  | using alternative prompt |
 | GRPO  | 34.3%  |  |

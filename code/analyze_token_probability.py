@@ -139,11 +139,12 @@ def compare_token_probability(ref_model, model, tokenizer, question: str, system
     ))
 
 if __name__ == "__main__":
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     run_num = 2
     lora_adapter_path = f"output/grpo/{model_name}/run{run_num}/grpo_saved_lora"
 
-    question = "Janet buys a brooch for her daughter. She pays $500 for the material to make it and then another $800 for the jeweler to construct it. After that, she pays 10% of that to get it insured. How much did she pay?"
+    # question = "Janet buys a brooch for her daughter. She pays $500 for the material to make it and then another $800 for the jeweler to construct it. After that, she pays 10% of that to get it insured. How much did she pay?"
+    question = "hours the first day and half as much the other two days he runs. How fast does he run?"
     # Load base model
     base_model, tokenizer = load_model_for_inference(
         model_name=model_name,
