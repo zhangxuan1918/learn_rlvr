@@ -49,8 +49,7 @@ def get_trainer(training_config, model, tokenizer, dataset):
             soft_format_reward_func,
             strict_format_reward_func,
             int_reward_func,
-            # correctness_reward_func,
-            random_reward_func,
+            correctness_reward_func,
         ],  # type: ignore
         args=training_config,
         train_dataset=dataset,
