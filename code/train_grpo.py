@@ -1,6 +1,7 @@
 from model import get_model, load_lora_adapter
 from data import (
     get_gsm8k_dataset,
+    random_reward_func,
     xmlcount_reward_func,
     strict_format_reward_func,
     correctness_reward_func,
@@ -48,7 +49,8 @@ def get_trainer(training_config, model, tokenizer, dataset):
             soft_format_reward_func,
             strict_format_reward_func,
             int_reward_func,
-            correctness_reward_func,
+            # correctness_reward_func,
+            random_reward_func,
         ],  # type: ignore
         args=training_config,
         train_dataset=dataset,
@@ -84,11 +86,12 @@ def train(
 
 
 if __name__ == "__main__":
-    run_num = 2
-    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+    run_num = 4
+    model_name = "Qwen/Qwen2.5-3B-Instruct"
     output_dir = f"output/grpo/{model_name}/run{run_num}"
     # If we first sft the model, we need to load the lora adapter
-    lora_adapter_path = f"output/sft/{model_name}/run5/sft_saved_lora"
+    # lora_adapter_path = f"output/sft/{model_name}/run5/sft_saved_lora"
+    lora_adapter_path = None
     if os.environ.get("WANDB_API_KEY", None):
         wandb.login(key=os.environ["WANDB_API_KEY"])
         wandb.init(

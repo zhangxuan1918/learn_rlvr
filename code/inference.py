@@ -81,7 +81,7 @@ def evaluate_gsm8k(
 
 
 if __name__ == "__main__":
-    run_num = 3
+    run_num = 4
     train_method = "grpo"
     model_name = "Qwen/Qwen2.5-3B-Instruct"
 

@@ -1,3 +1,4 @@
+import random
 import re
 from datasets import load_dataset
 
@@ -102,6 +103,8 @@ def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[floa
     )
     return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
 
+def random_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+    return [1.0 if random.random() >= 0.5 else 0.0 for completion in completions]
 
 def int_reward_func(completions, **kwargs) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
