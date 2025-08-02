@@ -1,4 +1,4 @@
-from model import get_model, load_lora_adapter
+from model import get_model
 from data import (
     get_gsm8k_dataset,
     random_reward_func,
