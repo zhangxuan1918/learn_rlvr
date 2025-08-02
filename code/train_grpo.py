@@ -27,8 +27,8 @@ def get_train_config(report_to: str = "none", output_dir: str = "output"):
         lr_scheduler_type="cosine",
         optim="adamw_8bit",
         logging_steps=1,
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=4,
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=1,
         num_generations=8,
         max_prompt_length=1024,
         max_completion_length=1024,
@@ -85,8 +85,9 @@ def train(
 
 
 if __name__ == "__main__":
-    run_num = 4
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    run_num = 2
+    model_name = "meta-llama/Llama-3.2-3B-Instruct"
+    # model_name = "Qwen/Qwen2.5-3B-Instruct"
     output_dir = f"output/grpo/{model_name}/run{run_num}"
     # If we first sft the model, we need to load the lora adapter
     # lora_adapter_path = f"output/sft/{model_name}/run5/sft_saved_lora"
