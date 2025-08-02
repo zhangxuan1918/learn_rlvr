@@ -1,8 +1,10 @@
+import enum
 import random
 import re
 from datasets import load_dataset
+from llm_sandbox import SandboxSession
 
-SYSTEM_PROMPT = """Respond in the following format:
+SYSTEM_FORMAT_PROMPT = """Respond in the following format:
 <reasoning>
 ...
 </reasoning>
@@ -10,7 +12,7 @@ SYSTEM_PROMPT = """Respond in the following format:
 ...
 </answer>"""
 
-SYSTEM_PROMPT_DETAILED = """Respond in the following format:
+SYSTEM_DETAILED_FORMAT_PROMPT = """Respond in the following format:
 <reasoning>
 Put your reasoning here.
 </reasoning>
@@ -25,6 +27,21 @@ XML_COT_FORMAT = """<reasoning>
 {answer}
 </answer>"""
 
+USER_SIMPLE_PROMPT = """{question}"""
+USER_REASONING_PROMPT = """{question}\nLet's think step by step."""
+USER_CODE_PROMPT = """{question}\nLet's think step by step. Write a python function to solve the problem. You are not allowed to use any package. Your python function shouldn't take any argument."""
+
+class OutputType(enum.Enum):
+    # Output answer in xml tag <answer>...</answer>
+    XML = 0
+    # Output answer in python code
+    CODE = 1
+
+class TrainMethodType(enum.Enum):
+    # Base model
+    BASE = 0
+    SFT = 1
+    GRPO = 2
 
 # Loads dataset helper functions
 def get_gsm8k_dataset(split="train"):
@@ -32,7 +49,7 @@ def get_gsm8k_dataset(split="train"):
     data = data.map(
         lambda x: {
             "prompt": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": SYSTEM_FORMAT_PROMPT},
                 {"role": "user", "content": x["question"]},
             ],
             "answer": extract_hash_answer(x["answer"]),
@@ -56,7 +73,7 @@ def get_open_math_reasoning_dataset(split="cot"):
         thoughts = thoughts.replace("<think>", "").replace("</think>", "").strip()
         return {
             "prompt": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": SYSTEM_FORMAT_PROMPT},
                 {"role": "user", "content": problem},
                 {
                     "role": "assistant",
@@ -89,7 +106,55 @@ def extract_hash_answer(text: str) -> str | None:
     return text.split("####")[1].strip()
 
 
+def extract_python_code(text: str) -> str | None:
+    # Find the last python code block
+    pattern = r"```python\s*(.*?)```"
+    matches = re.findall(pattern, text, re.DOTALL)
+    return matches[-1].strip() if matches else None
+
+
+def execute_python_code_in_sandbox(code: str | None, session) -> str | None:
+    if code is None:
+        return None
+    try:
+        return session.run(code).stdout.strip()
+    except Exception as e:
+        print(f"Error executing code in sandbox: {e}")
+        return None
+
+
+def extract_python_code_answer(text: str, session) -> str | None:
+    try:
+        return execute_python_code_in_sandbox(
+            code=extract_python_code(text=text), session=session
+        )
+    except Exception as e:
+        return None
+
+
 # Reward functions
+def get_code_reward_func(session):
+    # session = SandboxSession(language="python")
+
+    def code_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+        responses = [completion[0]["content"] for completion in completions]
+        question = prompts[0][-1]["content"]
+        extracted_responses = [
+            extract_python_code_answer(text=response, session=session)
+            for response in responses
+        ]
+        print(
+            "-" * 20,
+            f"Question:\n{question}",
+            f"\nAnswer:\n{answer[0]}",
+            f"\nResponses:\n{responses[0]}",
+            f"\nExtracted:\n{extracted_responses[0]}",
+        )
+        return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
+
+    return code_reward_func
+
+
 def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
     question = prompts[0][-1]["content"]
@@ -103,8 +168,10 @@ def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[floa
     )
     return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
 
+
 def random_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
     return [1.0 if random.random() >= 0.5 else 0.0 for completion in completions]
+
 
 def int_reward_func(completions, **kwargs) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]

@@ -1,4 +1,4 @@
-from data import SYSTEM_PROMPT
+from data import SYSTEM_FORMAT_PROMPT
 
 from unsloth import FastLanguageModel
 import torch
@@ -13,7 +13,7 @@ def generate(
     top_k: int | None = 40,
     max_new_tokens: int = 512,
     do_sample: bool = True,
-    system_prompt: str = SYSTEM_PROMPT,
+    system_prompt: str = SYSTEM_FORMAT_PROMPT,
     return_prompt: bool = False,
     skip_special_tokens: bool = True,
     clean_up_tokenization_spaces: bool = True

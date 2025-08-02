@@ -1,4 +1,4 @@
-from data import SYSTEM_PROMPT_DETAILED, SYSTEM_PROMPT
+from data import SYSTEM_DETAILED_FORMAT_PROMPT, SYSTEM_FORMAT_PROMPT, USER_CODE_PROMPT
 from inference_helper import generate, load_model_for_inference
 from model import load_lora_adapter
 import torch
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         # system_prompt=(
         #     SYSTEM_PROMPT_DETAILED if lora_adapter_path is None else SYSTEM_PROMPT
         # ),
-        questions=[f"{question} Let's think step by step. Write a python function to solve the problem. Your python function shouldn't take any argument." for question in questions],
+        questions=[USER_CODE_PROMPT.format(question=question) for question in questions],
         system_prompt="",
         do_sample=False,
         return_prompt=True,

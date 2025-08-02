@@ -1,7 +1,7 @@
 import re
 from inference_helper import generate, load_model_for_inference
 from model import load_lora_adapter
-from data import SYSTEM_PROMPT, SYSTEM_PROMPT_DETAILED
+from data import SYSTEM_FORMAT_PROMPT, SYSTEM_DETAILED_FORMAT_PROMPT
 
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,7 @@ def get_token_probability(
     tokenizer,
     question: str,
     response: str,
-    system_prompt: str = SYSTEM_PROMPT,
+    system_prompt: str = SYSTEM_FORMAT_PROMPT,
 ) -> tuple[list[str], torch.Tensor]:
     prompts = tokenizer.apply_chat_template(
         [
@@ -170,7 +170,7 @@ if __name__ == "__main__":
         model=peft_model,
         tokenizer=tokenizer,
         question=question,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=SYSTEM_FORMAT_PROMPT,
         user_prompt="{question}",
         max_new_tokens=1024,
     )
@@ -180,7 +180,7 @@ if __name__ == "__main__":
         model=base_model,
         tokenizer=tokenizer,
         question=question,
-        system_prompt= SYSTEM_PROMPT_DETAILED,
+        system_prompt= SYSTEM_DETAILED_FORMAT_PROMPT,
         user_prompt="{question}\nLet's think step by step.",
         max_new_tokens=1024,
     )
