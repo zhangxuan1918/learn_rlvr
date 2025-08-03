@@ -1,12 +1,12 @@
-from data import SYSTEM_DETAILED_FORMAT_PROMPT, SYSTEM_FORMAT_PROMPT, USER_CODE_PROMPT
+from data import USER_PROMPT_CODE
 from inference_helper import generate, load_model_for_inference
 from model import load_lora_adapter
 import torch
 
 if __name__ == "__main__":
     run_num = 2
-    # model_name = "meta-llama/Llama-3.2-3B-Instruct"
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    model_name = "meta-llama/Llama-3.2-3B-Instruct"
+    # model_name = "Qwen/Qwen2.5-3B-Instruct"
     # lora_adapter_path = f"output/grpo/{model_name}/run{run_num}/grpo_saved_lora"
     lora_adapter_path = None
     # run_num = 5
@@ -45,12 +45,8 @@ if __name__ == "__main__":
     responses = generate(
         model=model,
         tokenizer=tokenizer,
-        # questions=questions,
-        # system_prompt=(
-        #     SYSTEM_PROMPT_DETAILED if lora_adapter_path is None else SYSTEM_PROMPT
-        # ),
-        questions=[USER_CODE_PROMPT.format(question=question) for question in questions],
-        system_prompt="",
+        questions=questions,
+        user_prompt=USER_PROMPT_CODE,
         do_sample=False,
         return_prompt=True,
         max_new_tokens=1024,

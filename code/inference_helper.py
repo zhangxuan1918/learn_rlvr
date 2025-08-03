@@ -1,5 +1,3 @@
-from data import SYSTEM_FORMAT_PROMPT
-
 from unsloth import FastLanguageModel
 import torch
 
@@ -8,21 +6,20 @@ def generate(
     model,
     tokenizer,
     questions: list[str],
+    user_prompt: str,
     temperature: float | None = 0.7,
     top_p: float | None = 0.95,
     top_k: int | None = 40,
     max_new_tokens: int = 512,
     do_sample: bool = True,
-    system_prompt: str = SYSTEM_FORMAT_PROMPT,
     return_prompt: bool = False,
     skip_special_tokens: bool = True,
-    clean_up_tokenization_spaces: bool = True
+    clean_up_tokenization_spaces: bool = True,
 ) -> list[str]:
     prompts = [
         tokenizer.apply_chat_template(
             [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question},
+                {"role": "user", "content": user_prompt.format(question=question)},
             ],
             tokenize=False,
             add_generation_prompt=True,
@@ -49,7 +46,7 @@ def generate(
     else:
         generated_tokens = outputs
     generated_texts = tokenizer.batch_decode(
-        generated_tokens, 
+        generated_tokens,
         skip_special_tokens=skip_special_tokens,
         clean_up_tokenization_spaces=clean_up_tokenization_spaces,
     )
@@ -71,4 +68,3 @@ def load_model_for_inference(
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
     return model, tokenizer
-

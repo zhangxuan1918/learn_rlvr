@@ -2,15 +2,10 @@ from typing import Callable
 from llm_sandbox import SandboxSession
 from model import get_model
 from data import (
-    OutputType,
+    USER_PROMPT_CODE,
+    extract_answer_python,
     get_gsm8k_dataset,
-    random_reward_func,
-    xmlcount_reward_func,
-    strict_format_reward_func,
-    correctness_reward_func,
-    int_reward_func,
-    soft_format_reward_func,
-    get_code_reward_func,
+    get_correctness_reward_func,
 )
 import os
 from trl import GRPOConfig, GRPOTrainer
@@ -31,9 +26,9 @@ def get_train_config(report_to: str = "none", output_dir: str = "output"):
         lr_scheduler_type="cosine",
         optim="adamw_8bit",
         logging_steps=1,
-        per_device_train_batch_size=8,
-        gradient_accumulation_steps=1,
-        num_generations=8,
+        per_device_train_batch_size=16,
+        gradient_accumulation_steps=4,
+        num_generations=16,
         max_prompt_length=1024,
         max_completion_length=1024,
         num_train_epochs=1,
@@ -61,10 +56,11 @@ def train(
     fast_inference: bool,
     lora_rank: int,
     gpu_memory_utilization: float,
+    user_prompt: str,
     report_to: str,
     output_dir: str,
+    reward_funcs: list[Callable],
     lora_adapter_path: str | None = None,
-    reward_funcs: list = [correctness_reward_func],
 ):
     model, tokenizer = get_model(
         model_name=model_name,
@@ -77,67 +73,23 @@ def train(
     )
 
     training_config = get_train_config(report_to=report_to, output_dir=output_dir)
-    dataset = get_gsm8k_dataset()
+    dataset = get_gsm8k_dataset().map(
+        lambda x: {
+            "prompt": [
+                {"role": "user", "content": user_prompt.format(question=x["question"])},
+            ],
+        }
+    )
 
     trainer = get_trainer(training_config, model, tokenizer, dataset, reward_funcs)
     trainer.train()
     model.save_pretrained(os.path.join(output_dir, "grpo_saved_lora"))
 
 
-def train_grpo_python_code(
-    model_name: str, output_dir: str, lora_adapter_path=None, report_to="none"
-):
-    with SandboxSession(language="python") as session:
-        train(
-            model_name=model_name,
-            max_seq_length=2048,
-            load_in_4bit=True,
-            fast_inference=True,
-            lora_rank=64,
-            gpu_memory_utilization=0.7,
-            report_to=report_to,
-            output_dir=output_dir,
-            lora_adapter_path=lora_adapter_path,
-            reward_funcs=[
-                random_reward_func,
-                xmlcount_reward_func,
-                strict_format_reward_func,
-                int_reward_func,
-                soft_format_reward_func,
-                get_code_reward_func(session=session),
-            ],
-        )
-
-
-def train_grpo_xml(
-    model_name: str, output_dir: str, lora_adapter_path=None, report_to="none"
-):
-    train(
-        model_name=model_name,
-        max_seq_length=2048,
-        load_in_4bit=True,
-        fast_inference=True,
-        lora_rank=64,
-        gpu_memory_utilization=0.7,
-        report_to=report_to,
-        output_dir=output_dir,
-        lora_adapter_path=lora_adapter_path,
-        reward_funcs=[
-            random_reward_func,
-            xmlcount_reward_func,
-            strict_format_reward_func,
-            int_reward_func,
-            soft_format_reward_func,
-            correctness_reward_func,
-        ],
-    )
-
-
 if __name__ == "__main__":
-    # model_name = "meta-llama/Llama-3.2-3B-Instruct"
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
-    output_type = OutputType.CODE
-    run_num = 4
+    model_name = "meta-llama/Llama-3.2-3B-Instruct"
+    # model_name = "Qwen/Qwen2.5-3B-Instruct"
+    run_num = 5
     output_dir = f"output/grpo/{model_name}/run{run_num}"
     # If we first sft the model, we need to load the lora adapter
     # lora_adapter_path = f"output/sft/{model_name}/run5/sft_saved_lora"
@@ -153,19 +105,22 @@ if __name__ == "__main__":
     else:
         report_to = "none"
 
-    match output_type:
-        case OutputType.XML:
-            train_grpo_xml(
-                model_name=model_name,
-                output_dir=output_dir,
-                lora_adapter_path=lora_adapter_path,
-                report_to=report_to,
+    train(
+        model_name=model_name,
+        max_seq_length=2048,
+        load_in_4bit=True,
+        fast_inference=True,
+        lora_rank=64,
+        gpu_memory_utilization=0.7,
+        user_prompt=USER_PROMPT_CODE,
+        report_to=report_to,
+        output_dir=output_dir,
+        lora_adapter_path=lora_adapter_path,
+        reward_funcs=[
+            get_correctness_reward_func(
+                context_manager=lambda: SandboxSession(lang="python", container_id="a319b3c76c22", verbose=True),
+                extract_answer_fn=extract_answer_python,
             )
-        case OutputType.CODE:
-            train_grpo_python_code(
-                model_name=model_name,
-                output_dir=output_dir,
-                lora_adapter_path=lora_adapter_path,
-                report_to=report_to,
-            )
+        ],
+    )
     wandb.finish()

@@ -1,41 +1,36 @@
 import enum
 import random
 import re
+from typing import Callable
 from datasets import load_dataset
-from llm_sandbox import SandboxSession
 
-SYSTEM_FORMAT_PROMPT = """Respond in the following format:
-<reasoning>
-...
-</reasoning>
-<answer>
-...
-</answer>"""
-
-SYSTEM_DETAILED_FORMAT_PROMPT = """Respond in the following format:
-<reasoning>
-Put your reasoning here.
-</reasoning>
-<answer>
-Put your answer here. The answer should be a numeric value.
-</answer>"""
-
-XML_COT_FORMAT = """<reasoning>
+XML_COT_TEMPLATE = """<reasoning>
 {reasoning}
 </reasoning>
 <answer>
 {answer}
 </answer>"""
 
-USER_SIMPLE_PROMPT = """{question}"""
-USER_REASONING_PROMPT = """{question}\nLet's think step by step."""
-USER_CODE_PROMPT = """{question}\nLet's think step by step. Write a python function to solve the problem. You are not allowed to use any package. Your python function shouldn't take any argument."""
+USER_PROMPT_XML_COT = """Answer the question in the following format:
+<reasoning>
+Put your reasoning here.
+</reasoning>
+<answer>
+Put your answer here. The answer should be an integer.
+</answer>
+Question: {question}
+Let's think step by step!
+"""
 
-class OutputType(enum.Enum):
-    # Output answer in xml tag <answer>...</answer>
-    XML = 0
-    # Output answer in python code
-    CODE = 1
+USER_PROMPT_CODE = """Write a python function to solve the question. For the python function
+1. You are not allowed to import any other library
+2. Your python function shouldn't take any argument
+3. Your python function should only return an integer
+
+Question: {question}
+Let's think step by step!
+"""
+
 
 class TrainMethodType(enum.Enum):
     # Base model
@@ -43,16 +38,14 @@ class TrainMethodType(enum.Enum):
     SFT = 1
     GRPO = 2
 
+
 # Loads dataset helper functions
 def get_gsm8k_dataset(split="train"):
     data = load_dataset("openai/gsm8k", "main", split=split)
     data = data.map(
         lambda x: {
-            "prompt": [
-                {"role": "system", "content": SYSTEM_FORMAT_PROMPT},
-                {"role": "user", "content": x["question"]},
-            ],
-            "answer": extract_hash_answer(x["answer"]),
+            "question": x["question"],
+            "answer": extract_answer_hash_tag(x["answer"]),
         }
     )
     return data
@@ -68,20 +61,19 @@ def get_open_math_reasoning_dataset(split="cot"):
     def format_data(x):
         expected_answer = x["expected_answer"].strip()
         problem = x["problem"].strip()
-        # Replace <think> by <reasoning>, </think> by </reasoning>
         thoughts = x["generated_solution"]
         thoughts = thoughts.replace("<think>", "").replace("</think>", "").strip()
         return {
-            "prompt": [
-                {"role": "system", "content": SYSTEM_FORMAT_PROMPT},
-                {"role": "user", "content": problem},
-                {
-                    "role": "assistant",
-                    "content": XML_COT_FORMAT.format(
-                        reasoning=thoughts, answer=expected_answer
-                    ),
-                },
-            ],
+            # "prompt": [
+            #     {"role": "user", "content": user_prompt.format(question=problem)},
+            #     {
+            #         "role": "assistant",
+            #         "content": content_template.format(
+            #             reasoning=thoughts, answer=expected_answer
+            #         ),
+            #     },
+            # ],
+            "question": problem,
             "answer": expected_answer,
             "thoughts": thoughts,
         }
@@ -91,16 +83,15 @@ def get_open_math_reasoning_dataset(split="cot"):
 
 
 # Extract answer helper functions
-def extract_xml_answer(text: str) -> str:
-    match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
+def extract_answer_xml(text: str, **kwargs) -> str | None:
+    del kwargs
+    matches = re.findall(r"<answer>(.*?)</answer>", text, re.DOTALL)
 
-    if match:
-        return match.group(1).strip()
-    else:
-        return ""
+    return postprocess_executed_result(executed_result=matches[-1]) if matches else None
 
 
-def extract_hash_answer(text: str) -> str | None:
+def extract_answer_hash_tag(text: str, **kwargs) -> str | None:
+    del kwargs
     if "####" not in text:
         return None
     return text.split("####")[1].strip()
@@ -116,81 +107,93 @@ def extract_python_code(text: str) -> str | None:
 def execute_python_code_in_sandbox(code: str | None, session) -> str | None:
     if code is None:
         return None
-    try:
-        return session.run(code).stdout.strip()
-    except Exception as e:
-        print(f"Error executing code in sandbox: {e}")
-        return None
+    for i in range(3):
+        try:
+            return session.run(code, timeout=10).stdout.strip()
+        except Exception as e:
+            print(f"[{i}/3] Error executing code in sandbox: {e}, retrying...")
+            session.open()
+    return None
 
 
-def extract_python_code_answer(text: str, session) -> str | None:
+def extract_answer_python(text: str, session) -> str | None:
     try:
-        return execute_python_code_in_sandbox(
+        executed_result = execute_python_code_in_sandbox(
             code=extract_python_code(text=text), session=session
         )
+        return postprocess_executed_result(executed_result=executed_result)
     except Exception as e:
         return None
+
+
+def postprocess_executed_result(executed_result: str | None) -> str | None:
+    if executed_result is None:
+        return None
+    matches = re.findall(r"-?\d+\.?\d*", executed_result)
+    return matches[-1] if matches else None
 
 
 # Reward functions
-def get_code_reward_func(session):
-    # session = SandboxSession(language="python")
+def compute_correctness_reward(
+    extracted_answer: str | None, ground_truth_answer: str
+) -> float:
+    if extracted_answer is None:
+        return 0.0
+    converted_answer = str(int(float(extracted_answer)))
+    if converted_answer == ground_truth_answer:
+        return 2.0
+    else:
+        # extracted answer is a number but not equal to ground truth
+        return 0.5
 
-    def code_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+
+def get_correctness_reward_func(context_manager, extract_answer_fn: Callable):
+    def reward_func(prompts, completions, answer, **kwargs) -> list[float]:
         responses = [completion[0]["content"] for completion in completions]
         question = prompts[0][-1]["content"]
-        extracted_responses = [
-            extract_python_code_answer(text=response, session=session)
-            for response in responses
-        ]
+
+        with context_manager() as session:
+            executed_answer = [
+                extract_answer_fn(response, session=session) for response in responses
+            ]
         print(
             "-" * 20,
             f"Question:\n{question}",
             f"\nAnswer:\n{answer[0]}",
             f"\nResponses:\n{responses[0]}",
-            f"\nExtracted:\n{extracted_responses[0]}",
+            f"\nExtracted:\n{executed_answer[0]}",
         )
-        return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
+        return [
+            compute_correctness_reward(r, a) for r, a in zip(executed_answer, answer)
+        ]
 
-    return code_reward_func
-
-
-def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
-    responses = [completion[0]["content"] for completion in completions]
-    question = prompts[0][-1]["content"]
-    extracted_responses = [extract_xml_answer(response) for response in responses]
-    print(
-        "-" * 20,
-        f"Question:\n{question}",
-        f"\nAnswer:\n{answer[0]}",
-        f"\nResponses:\n{responses[0]}",
-        f"\nExtracted:\n{extracted_responses[0]}",
-    )
-    return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
+    return reward_func
 
 
 def random_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
-    return [1.0 if random.random() >= 0.5 else 0.0 for completion in completions]
+    del prompts, answer, kwargs
+    return [1.0 if random.random() >= 0.5 else 0.0 for _ in completions]
 
 
-def int_reward_func(completions, **kwargs) -> list[float]:
+def format_reward_func(completions, **kwargs) -> list[float]:
+    del kwargs
+    strict_format_pattern = (
+        r"^<reasoning>\n.*?\n</reasoning>\n<answer>\n.*?\n</answer>$"
+    )
     responses = [completion[0]["content"] for completion in completions]
-    extracted_responses = [extract_xml_answer(response) for response in responses]
-    return [0.5 if r.isdigit() else 0.0 for r in extracted_responses]
+    matches = [re.match(strict_format_pattern, r, flags=re.DOTALL) for r in responses]
+    strict_format_rewards = [0.75 if m else 0.0 for m in matches]
 
+    soft_format_pattern = r"<reasoning>.*?</reasoning>\s*<answer>.*?</answer>"
+    matches = [re.match(soft_format_pattern, r, flags=re.DOTALL) for r in responses]
+    soft_format_rewards = [0.25 if m else 0.0 for m in matches]
 
-def strict_format_reward_func(completions, **kwargs) -> list[float]:
-    pattern = r"^<reasoning>\n.*?\n</reasoning>\n<answer>\n.*?\n</answer>$"
-    responses = [completion[0]["content"] for completion in completions]
-    matches = [re.match(pattern, r, flags=re.DOTALL) for r in responses]
-    return [0.75 if m else 0.0 for m in matches]
-
-
-def soft_format_reward_func(completions, **kwargs) -> list[float]:
-    pattern = r"<reasoning>.*?</reasoning>\s*<answer>.*?</answer>"
-    responses = [completion[0]["content"] for completion in completions]
-    matches = [re.match(pattern, r, flags=re.DOTALL) for r in responses]
-    return [0.25 if m else 0.0 for m in matches]
+    return [
+        max(strict_reward, soft_reward)
+        for strict_reward, soft_reward in zip(
+            strict_format_rewards, soft_format_rewards
+        )
+    ]
 
 
 def count_xml(text: str) -> float:

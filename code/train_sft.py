@@ -1,5 +1,5 @@
 from model import get_model
-from data import get_open_math_reasoning_dataset
+from data import USER_PROMPT_XML_COT, XML_COT_TEMPLATE, get_open_math_reasoning_dataset
 
 import os
 from trl import SFTConfig, SFTTrainer
@@ -39,7 +39,28 @@ def get_trainer(training_config, model, tokenizer, dataset):
     )
 
 
-def preprocess_dataset(dataset, tokenizer, max_seq_length: int, input_name="text"):
+def preprocess_dataset(
+    dataset,
+    tokenizer,
+    max_seq_length: int,
+    user_prompt: str,
+    content_template: str,
+    input_name="text",
+):
+    dataset = dataset.map(
+        lambda x: {
+            "prompt": [
+                {"role": "user", "content": user_prompt.format(question=x["question"])},
+                {
+                    "role": "assistant",
+                    "content": content_template.format(
+                        reasoning=x["thoughts"], answer=x["answer"]
+                    ),
+                },
+            ],
+        }
+    )
+
     input_length_name = f"{input_name}_length"
     def _apply_chat_template(example):
         example[input_name] = tokenizer.apply_chat_template(
@@ -47,7 +68,6 @@ def preprocess_dataset(dataset, tokenizer, max_seq_length: int, input_name="text
         )
         example[input_length_name] = len(tokenizer(example[input_name])["input_ids"])
         return example
-
     return dataset.map(_apply_chat_template).filter(
         lambda example: example[input_length_name] <= max_seq_length
     )
@@ -78,6 +98,8 @@ def train(
         tokenizer=tokenizer,
         input_name=input_name,
         max_seq_length=max_seq_length,
+        user_prompt=USER_PROMPT_XML_COT,
+        content_template=XML_COT_TEMPLATE,
     )
 
     training_config = get_train_config(

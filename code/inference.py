@@ -1,33 +1,24 @@
-from functools import partial
-from typing import Callable
-
-from llm_sandbox import SandboxSession
 from data import (
-    SYSTEM_FORMAT_PROMPT,
-    SYSTEM_DETAILED_FORMAT_PROMPT,
-    USER_SIMPLE_PROMPT,
-    USER_CODE_PROMPT,
-    USER_REASONING_PROMPT,
-    OutputType,
+    USER_PROMPT_CODE,
     TrainMethodType,
-    extract_python_code_answer,
-    extract_xml_answer,
+    extract_answer_hash_tag,
+    extract_answer_python,
     get_gsm8k_dataset,
 )
 from inference_helper import generate, load_model_for_inference
 from model import load_lora_adapter
 import torch
 from tqdm import tqdm
+from llm_sandbox import SandboxSession
 
 
 def evaluate_gsm8k(
     model_name: str,
+    user_prompt: str,
     lora_adapter_path: str | None = None,
     adapter_name: str = "default",
-    batch_size=16,
-    system_prompt: str = "",
-    user_prompt=USER_REASONING_PROMPT,
-    extract_answer_fn: Callable = extract_xml_answer,
+    batch_size: int = 16,
+    python_sandbox_container_id: str | None = None,
 ) -> float:
     gsm8k = get_gsm8k_dataset(split="test")
     model, tokenizer = load_model_for_inference(
@@ -53,29 +44,30 @@ def evaluate_gsm8k(
             examples = gsm8k_data[
                 batch_idx * batch_size : batch_idx * batch_size + batch_size
             ]
-            questions = [
-                user_prompt.format(question=example["question"]) for example in examples
-            ]
-            gt_answers = [
-                example["answer"].split("####")[-1].strip() for example in examples
-            ]
+            questions = [example["question"] for example in examples]
+            gt_answers = [example["answer"] for example in examples]
             # Greedy decode
             responses = generate(
                 model=model,
                 tokenizer=tokenizer,
                 questions=questions,
+                user_prompt=user_prompt,
                 max_new_tokens=1024,
                 temperature=None,
                 top_p=None,
                 top_k=None,
-                system_prompt=system_prompt,
                 do_sample=False,
             )
-            pred_answers = [extract_answer_fn(response) for response in responses]
+            with SandboxSession(lang="python", container_id=python_sandbox_container_id, verbose=True) as session:
+                pred_answers = [
+                    extract_answer_python(text=response, session=session)
+                    for response in responses
+                ]
             batch_correctness = [
                 pred_anwser == gt_answer
                 for pred_anwser, gt_answer in zip(pred_answers, gt_answers)
             ]
+
             correct += sum(batch_correctness)
             total += len(batch_correctness)
 
@@ -91,57 +83,11 @@ def evaluate_gsm8k(
     return accuracy
 
 
-def evaluate_gsm8k_python_code(
-    model_name: str,
-    system_prompt: str,
-    user_prompt: str,
-    train_method: TrainMethodType,
-    lora_adapter_path: str | None = None,
-):
-    """
-    Model generates python code to solve the problem
-    """
-
-    with SandboxSession(language="python") as session:
-        extract_answer_fn = partial(extract_python_code_answer, session=session)
-        accuracy = evaluate_gsm8k(
-            model_name=model_name,
-            lora_adapter_path=lora_adapter_path,
-            batch_size=64,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            extract_answer_fn=extract_answer_fn,
-        )
-        print(f"\n✅ GSM8K Accuracy ({train_method.name}): {accuracy:.1%}")
-
-
-def evaluate_gsm8k_xml(
-    model_name: str,
-    system_prompt: str,
-    user_prompt: str,
-    train_method: TrainMethodType,
-    lora_adapter_path: str | None = None,
-):
-    """
-    Model generates answer in xml tags to solve the problem
-    """
-    accuracy = evaluate_gsm8k(
-        model_name=model_name,
-        lora_adapter_path=lora_adapter_path,
-        batch_size=64,
-        system_prompt=system_prompt,
-        user_prompt=user_prompt,
-        extract_answer_fn=extract_xml_answer,
-    )
-    print(f"\n✅ GSM8K Accuracy ({train_method.name}): {accuracy:.1%}")
-
-
 if __name__ == "__main__":
     model_name = "meta-llama/Llama-3.2-3B-Instruct"
     run_num = 4
-    train_method = TrainMethodType.GRPO
-    output_type = OutputType.CODE
-    if train_method in ["sft", "grpo"]:
+    train_method = TrainMethodType.BASE
+    if train_method in [TrainMethodType.SFT, TrainMethodType.GRPO]:
         lora_adapter_path = (
             f"output/{train_method}/{model_name}/run{run_num}/{train_method}_saved_lora"
         )
@@ -149,33 +95,11 @@ if __name__ == "__main__":
         # Base model
         lora_adapter_path = None
 
-    match output_type:
-        case OutputType.XML:
-            match train_method:
-                case TrainMethodType.GRPO:
-                    system_prompt = SYSTEM_FORMAT_PROMPT
-                    user_prompt = USER_SIMPLE_PROMPT
-                case TrainMethodType.SFT, TrainMethodType.BASE:
-                    system_prompt = SYSTEM_DETAILED_FORMAT_PROMPT
-                    user_prompt = USER_REASONING_PROMPT
-                case _:
-                    raise ValueError(f"Unknown train method: {train_method}")
-            # Evaluate reasoning and answer
-            evaluate_gsm8k_xml(
-                model_name=model_name,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                lora_adapter_path=lora_adapter_path,
-                train_method=train_method,
-            )
-        case OutputType.CODE:
-            # Evaluate Python code
-            evaluate_gsm8k_python_code(
-                model_name=model_name,
-                system_prompt="",
-                user_prompt=USER_CODE_PROMPT,
-                lora_adapter_path=lora_adapter_path,
-                train_method=train_method,
-            )
-        case _:
-            raise ValueError(f"Unknown output type: {output_type}")
+    accuracy = evaluate_gsm8k(
+        model_name=model_name,
+        lora_adapter_path=lora_adapter_path,
+        user_prompt=USER_PROMPT_CODE,
+        batch_size=64,
+        python_sandbox_container_id="a319b3c76c22",
+    )
+    print(f"\n✅ GSM8K Accuracy ({train_method}): {accuracy:.1%}")
